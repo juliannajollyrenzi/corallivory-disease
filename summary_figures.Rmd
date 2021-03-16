@@ -1,0 +1,26 @@
+---
+title: "Summary figures"
+author: "Julianna Renzi"
+date: "3/16/2021"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: lumen
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(tidyverse) # data manipulation
+require(here) # for relative paths
+```
+
+# Make a plot of publications through time
+
+Bring in the data
+
+```{r}
+time <- read_csv(here("data", "Corallivore_year_exptype.csv"))
+```
+
