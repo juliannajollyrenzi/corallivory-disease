@@ -17,6 +17,13 @@ knitr::opts_chunk$set(echo = TRUE)
 require(tidyverse) # data manipulation
 require(here) # for relative paths
 require(RColorBrewer) # for colors
+require(patchwork) # combining figures
+
+# for map making:
+require(sf)
+require(rnaturalearth) # map of the world
+
+require(tmap)
 ```
 
 # Make a plot of publications through time
@@ -64,10 +71,86 @@ time_full %>%
   scale_fill_manual(name = "", # no legend title 
                     values = rev(brewer.pal(n = 3, name = "YlOrBr"))) +
   scale_x_continuous(breaks = seq(1990, 2020, by = 2)) + # create a higher resolution on the x-axis
-  theme(text = element_text(size = 15), legend.position = "top",
+  theme(text = element_text(size = 18), legend.position = "top",
         axis.text.x = element_text(angle = 90, hjust = 1), # rotate axis labels
         axis.title.x = element_text(vjust = -1), # add padding fo titles (also need to adjust the margins)
         axis.title.y = element_text(vjust = 3),
         plot.margin = unit(c(5.5, 5.5, 10, 10), "points")) 
 ```
+
+# Now make a map of where the studies have been conducted
+
+```{r}
+# bring in world shape
+world <- ne_countries(scale = "medium", returnclass = "sf")
+
+# bring in shapefiles from Spalding et al. on marine bioregions
+meow_ecos <- read_sf(here("data", "MEOW-TNC"), layer = "meow_ecos")
+
+# check projection
+st_crs(meow_ecos) # WGS 84
+
+# plot the different realms (might be most useful for our purposes)
+ggplot() +
+  geom_sf(data = meow_ecos, aes(fill = REALM), size = 0.05) +
+  geom_sf(data = world, fill = "darkgray", color = "black", size = 0.05) + # background color for continents (gray with a border)
+  theme_classic()
+```
+
+To figure out which areas match with which:
+
+```{r}
+tmap_mode("view")
+
+tm_shape(meow_ecos) + # this uses leaflet behind the scenes
+  tm_polygons("ECOREGION", legend.show = FALSE) +
+  tm_shape(world) +
+  tm_polygons("admin", legend.show = FALSE) 
+```
+
+Bring in the csv with the regions matched to the papers. Note that **if there were multiple ECOREGIONS studied a paper could be counted multiple times (once for each ECOREGION)**
+
+```{r}
+ecoregions <- read_csv(here("data", "Corallivore_spatial.csv"))
+
+# get count per ecoregion
+ecoreg_sum <- ecoregions %>% 
+  group_by(Country_ecoregion) %>% 
+  summarize(Num_studies = n()) %>% 
+  mutate(ECOREGION = Country_ecoregion)
+
+# join to the dataset for plotting
+meow_pub <- meow_ecos %>% 
+  left_join(ecoreg_sum, by = "ECOREGION")
+
+# plot results
+ggplot() +
+  geom_sf(data = meow_pub, aes(fill = Num_studies), size = 0) +
+  geom_sf(data = world, fill = "darkgray", color = "black", size = 0.05) + # background color for continents (gray with a border)
+  theme_classic() +
+  scale_fill_gradient(low = brewer.pal(n = 3, name = "YlOrRd")[1], high = brewer.pal(n = 3, name = "YlOrRd")[3], na.value = NA) 
+```
+
+Or plot by the realm
+
+```{r}
+# get count per realm
+realm_pub <- meow_pub %>% 
+  select(REALM, Num_studies) %>% 
+  group_by(REALM) %>% 
+  summarize(Num_studies = sum(Num_studies, na.rm = TRUE)) 
+  
+# plot results
+ggplot() +
+  geom_sf(data = realm_pub, aes(fill = Num_studies), size = 0.0) +
+  geom_sf(data = world, fill = "darkgray", color = "black", size = 0.05) + # background color for continents (gray with a border)
+  scale_fill_gradient(name = "Number of studies", low = brewer.pal(n = 3, name = "YlOrRd")[1], high = brewer.pal(n = 3, name = "YlOrRd")[3], na.value = NA) + 
+  theme_classic() +
+  theme(legend.position = 'bottom')
+```
+
+
+
+
+
 
