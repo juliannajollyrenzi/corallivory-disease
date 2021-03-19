@@ -1,0 +1,175 @@
+---
+title: "Corallivore taxa"
+author: "Julianna Renzi"
+date: "3/18/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+require(tidyverse) # data manipulation
+require(here) # relative file paths
+require(RColorBrewer)
+require(patchwork)
+```
+
+# Examine which corallivore phylla are related to which diseases
+
+First, bring in the data
+
+```{r}
+corallivores <- read_csv(here("data", "Inverts_correlation.csv")) %>% 
+  select(-X12, -X13, -X14)
+```
+
+```{r}
+# remind ourselves of which diseases we have
+corallivores %>% 
+  filter(!is.na(Effect)) %>% # only ones with some sort of correlation/effect
+  group_by(Disease_general) %>% 
+  summarize(Inverts = n()) %>% 
+  arrange(-Inverts)
+
+# start by looking at top diseases grouped by spp
+corall_effect <- corallivores %>% 
+  filter(!is.na(Effect)) %>% 
+  group_by(Corallivore_Weffect, Disease_general) %>% 
+  summarize(N_pos = sum(Effect == "Positive"),
+            N_neg = sum(Effect == "Negative")) 
+
+# or by phyllum
+phyl_effect <- corallivores %>% 
+  filter(!is.na(Effect)) %>% 
+  group_by(Corallivore_phylum, Disease_general) %>% 
+  summarize(N_pos = sum(Effect == "Positive"),
+            N_neg = sum(Effect == "Negative")) 
+
+```
+
+Plot by phylum
+
+```{r}
+# white disease
+white_phyl_eff <- phyl_effect %>% 
+  filter(Disease_general == "White") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_phylum, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1),
+          legend.position = "none") +
+    xlab("") +
+    ylab("Number of studies") +
+  ggtitle("(A) White disease")
+
+
+# for BBD
+BBD_phyl_eff <- phyl_effect %>% 
+  filter(Disease_general == "BBD") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_phylum, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1),
+          legend.position = "none") +
+    xlab("") +
+    ylab("") +
+  ggtitle("(B) Black band disease")
+
+
+# for BrB
+BrB_phyl_eff <- phyl_effect %>% 
+  filter(Disease_general == "BrB") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_phylum, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1),
+          legend.position = "none") +
+    xlab("Phyllum") +
+    ylab("Number of studies") +
+  ggtitle("(C) Brown band disease")
+
+
+
+# for general disease
+general_phyl_eff <- phyl_effect %>% 
+  filter(Disease_general == "General") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_phylum, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1),
+          legend.position = "none") +
+    xlab("Phyllum") +
+    ylab("Number of studies") +
+  ggtitle("General disease")
+
+
+# for Trematodiasis
+trem_phyl_eff <- phyl_effect %>% 
+  filter(Disease_general == "Trematodiasis") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_phylum, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1)) +
+    xlab("Phyllum") +
+    ylab("") +
+  ggtitle("(D) Trematodiasis")
+
+
+# plot them all together:
+pdf("disease_effects.pdf", height = 5, width = 6.5)
+
+(white_phyl_eff + BBD_phyl_eff) /
+(BrB_phyl_eff + trem_phyl_eff)
+
+dev.off()
+
+```
+
+# Examine which corallivore species are related to which diseases
+
+```{r}
+
+```
+
