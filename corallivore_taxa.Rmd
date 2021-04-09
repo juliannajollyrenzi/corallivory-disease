@@ -16,13 +16,13 @@ require(RColorBrewer)
 require(patchwork)
 ```
 
-# Examine which corallivore phylla are related to which diseases
+## Examine which corallivore phylla are related to which diseases
 
 First, bring in the data
 
 ```{r}
-corallivores <- read_csv(here("data", "Inverts_correlation.csv")) %>% 
-  select(-X12, -X13, -X14)
+corallivores <- read_csv(here("data", "Taxa_correlation.csv")) %>%
+  select(-X16, -X17, -X18)
 ```
 
 ```{r}
@@ -30,8 +30,8 @@ corallivores <- read_csv(here("data", "Inverts_correlation.csv")) %>%
 corallivores %>% 
   filter(!is.na(Effect)) %>% # only ones with some sort of correlation/effect
   group_by(Disease_general) %>% 
-  summarize(Inverts = n()) %>% 
-  arrange(-Inverts)
+  summarize(Num_corallivs = n()) %>% 
+  arrange(-Num_corallivs)
 
 # start by looking at top diseases grouped by spp
 corall_effect <- corallivores %>% 
@@ -158,18 +158,710 @@ trem_phyl_eff <- phyl_effect %>%
 
 
 # plot them all together:
-pdf("disease_effects.pdf", height = 5, width = 6.5)
+# pdf("disease_effects.pdf", height = 5, width = 6.5)
 
 (white_phyl_eff + BBD_phyl_eff) /
 (BrB_phyl_eff + trem_phyl_eff)
 
-dev.off()
+# dev.off()
 
+```
+
+## Examine which corallivore species are related to which diseases
+
+```{r}
+# do for the top diseases
+corall_effect %>% 
+  filter(N_pos != 0) %>%
+  filter(Disease_general != "Cyanobacterial" &
+           Disease_general != "General" &
+           Disease_general != "Microbiome")  %>% 
+  ggplot(aes(x = fct_reorder(Corallivore_Weffect, N_pos), y = N_pos, fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                         values = brewer.pal(n = 9, name = "Set1")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  ggtitle("(A) Positive relationships") +
+  xlab("Corallivore") +
+  ylab("Number of obs")
+
+
+
+
+
+
+# and for negative:
+# do for the top diseases
+corall_effect %>% 
+  filter(N_neg != 0) %>%
+  filter(Disease_general != "Cyanobacterial" &
+           Disease_general != "General" &
+           Disease_general != "Microbiome")  %>% 
+  ggplot(aes(x = fct_reorder(Corallivore_Weffect, N_neg), y = N_neg, fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                         values = brewer.pal(n = 9, name = "Set1")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  ggtitle("(B) Negative relationships") +
+  xlab("Corallivore") +
+  ylab("Number of obs")
+```
+
+
+And for phyllum:
+
+```{r}
+# phyllum groupings
+corall_effect <- corallivores %>% 
+  filter(!is.na(Effect)) %>% 
+  group_by(Corallivore_Weffect, Disease_general) %>% 
+  summarize(N_pos = sum(Effect == "Positive"),
+            N_neg = sum(Effect == "Negative")) 
+```
+
+## By family
+
+```{r}
+fam_effect <- corallivores %>% 
+  filter(!is.na(Effect)) %>% 
+  group_by(Corallivore_family, Disease_general) %>% 
+  summarize(N_pos = sum(Effect == "Positive"),
+            N_neg = sum(Effect == "Negative")) 
+```
+
+
+```{r}
+# white disease
+white_fam_eff <- fam_effect %>% 
+  filter(Disease_general == "White") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_family, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "none") +
+    xlab("") +
+    ylab("Number of studies") +
+  ggtitle("(A) White disease")
+
+
+# for BBD
+BBD_fam_eff <- fam_effect %>% 
+  filter(Disease_general == "BBD") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_family, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "none") +
+    xlab("") +
+    ylab("") +
+  ggtitle("(B) Black band disease")
+
+
+# for BrB
+BrB_fam_eff <- fam_effect %>% 
+  filter(Disease_general == "BrB") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_family, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "none") +
+    xlab("Phyllum") +
+    ylab("Number of studies") +
+  ggtitle("(C) Brown band disease")
+
+
+
+# for general disease
+general_fam_eff <- fam_effect %>% 
+  filter(Disease_general == "General") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_family, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1),
+          legend.position = "none") +
+    xlab("Phyllum") +
+    ylab("Number of studies") +
+  ggtitle("General disease")
+
+
+# for Trematodiasis
+trem_fam_eff <- fam_effect %>% 
+  filter(Disease_general == "Trematodiasis") %>% 
+  pivot_longer(cols = c(N_pos, N_neg), # flip so we can make a stacked bar plot
+               names_to = "Relationship",
+               values_to = "Count") %>% 
+ 
+  # now plot
+  ggplot(aes(x = fct_reorder(Corallivore_family, Count), y = Count, fill = Relationship)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Relationship",
+                         labels = c("Negative", "Positive"),
+                         values = c("#66C2A5", "#FC8D62")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+    xlab("Family") +
+    ylab("") +
+  ggtitle("(D) Trematodiasis")
+
+
+# plot them all together:
+# pdf("disease_effects_fam.pdf", height = 5, width = 6.5)
+
+(white_fam_eff + BBD_fam_eff) /
+(BrB_fam_eff + trem_fam_eff)
+
+# dev.off()
 ```
 
 # Examine which corallivore species are related to which diseases
 
 ```{r}
+# do for the top diseases
+pos_relation <- fam_effect %>% 
+  filter(N_pos != 0) %>%
+  filter(Disease_general != "Cyanobacterial" &
+           Disease_general != "General" &
+           Disease_general != "Microbiome")  %>% 
+  ggplot(aes(x = fct_reorder(Corallivore_family, N_pos), y = N_pos, fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                         values = brewer.pal(n = 9, name = "Set1")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  ggtitle("(A) Positive relationships") +
+  xlab("Corallivore") +
+  ylab("Number of obs")
 
+
+
+
+
+
+# and for negative:
+# do for the top diseases
+neg_relation <- fam_effect %>% 
+  filter(N_neg != 0) %>%
+  filter(Disease_general != "Cyanobacterial" &
+           Disease_general != "General" &
+           Disease_general != "Microbiome")  %>% 
+  ggplot(aes(x = fct_reorder(Corallivore_family, N_neg), y = N_neg, fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                         values = brewer.pal(n = 9, name = "Set1")) +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  ggtitle("(B) Negative relationships") +
+  xlab("Corallivore") +
+  ylab("Number of obs")
+
+
+# make a PDF:
+# pdf("disease_posnegFam.pdf", height = 5, width = 6.5)
+
+(pos_relation) /
+(neg_relation)
+
+# dev.off()
+
+```
+
+
+# Direct feeding
+
+All disease
+
+```{r}
+corallivores %>% 
+  filter(Direct_lesion_feeding == "Y") %>% 
+  group_by(Corallivore_family) %>% 
+  summarise(Observations = n()) %>% 
+  ggplot(aes(x = fct_reorder(Corallivore_family, Observations), y = Observations)) +
+  geom_bar(stat = "identity", fill = "darkorange") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  xlab("Corallivore") +
+  ylab("Number of obs")
+  
+  
+```
+
+Divided by disease
+
+```{r}
+# make this for just fishes
+dir_feed_plt <- corallivores %>% 
+  filter(Direct_lesion_feeding == "Y") %>% 
+  filter(Corallivore_family != "Amphinomidae") %>% 
+  group_by(Corallivore_family, Disease_general) %>% 
+  summarise(Observations = n()) %>% 
+  ggplot(aes(x = ordered(Corallivore_family, levels = c("Chaetodontidae", "Pomacentridae", "Labridae", "Scaridae", "Gobiidae", "Blenniidae", "Monacanthidae", "Acanthuridae")), y = Observations, fill = Disease_general)) +
+  geom_bar(stat = "identity") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  scale_fill_manual(name = "Disease",
+                         values = c("#A6CEE3", "#B2DF8A",
+                                    "#FB9A99", "#CAB2D6",
+                                    "#FF7F00")) + # these values are from brewer.pal("Paired") 
+  xlab("") +
+  ylab("Number of obs") +
+  ggtitle("(A) Direct feeding on lesions")
+  
+  
+```
+
+
+# Vectoring/reervoir
+
+```{r}
+reserv_plt <- corallivores %>% 
+  filter(Reservoir == "Y") %>% 
+  group_by(Corallivore_family, Disease_general) %>% 
+  summarise(Observations = n()) %>% 
+  ggplot(aes(x = fct_rev(fct_reorder(Corallivore_family, Observations)), y = Observations, fill = Disease_general)) +
+  geom_bar(stat = "identity") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))  +
+  scale_fill_manual(name = "Disease",
+                         values = brewer.pal(n = 4, name = "Set1")) +
+  scale_fill_manual(name = "Disease",
+                         values = c("#A6CEE3", "#1F78B4",
+                                    "#FF7F00", "#FFFF99")) +
+  xlab("Family") +
+  ylab("Number of obs") +
+  ggtitle("(B) Potential reservoirs")
+  
+  
+```
+
+Combine
+
+```{r}
+# pdf("feed_reservoir.pdf", height = 5, width = 6.5)
+
+dir_feed_plt /
+reserv_plt
+
+# dev.off()
+```
+
+
+# Divided by correlation and experiments:
+
+## Correlations:
+
+```{r}
+corr_effect <- corallivores %>% 
+  filter(!is.na(Correlation)) %>% 
+  filter(Correlation != "None") %>% # only look at the ones with a correlation
+  filter(Disease_general != "Microbiome") %>% # don't want to use this because it's too general
+  group_by(Corallivore_family, Disease_general) %>% 
+  summarize(N_pos = sum(Correlation == "Positive"),
+            N_neg = sum(Correlation == "Negative")) 
+```
+
+Make a matching color palette to be used in the future:
+
+```{r}
+asp_col <- brewer.pal(n = 9, name = "Spectral")[1]
+bbd_col <- brewer.pal(n = 9, name = "Spectral")[2]
+blc_col <- brewer.pal(n = 9, name = "Spectral")[3]
+brb_col <- brewer.pal(n = 9, name = "Spectral")[4]
+cya_col <- brewer.pal(n = 9, name = "Spectral")[5]
+ga_col <- brewer.pal(n = 9, name = "Spectral")[6]
+gen_col <- brewer.pal(n = 9, name = "Spectral")[7]
+seb_col <- brewer.pal(n = 9, name = "Spectral")[8]
+trem_col <- brewer.pal(n = 9, name = "Spectral")[9]
+whi_col <- brewer.pal(n = 11, name = "Spectral")[11]
+
+```
+
+Plot by positive/negative. First by positive:
+
+```{r}
+# positive
+corr_pos_plt <- corr_effect %>% 
+  filter(N_pos != 0) %>% 
+  ggplot(aes(x = ordered(Corallivore_family, levels = c("Muricidae", "Pomacentridae", "Amphinomidae", "Chaetodontidae", "Ovulidae", "Xanthidae", "Cryptochiridae", "Scaridae")), 
+             y = N_pos, 
+             fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                        values = c("Aspergillosis" = asp_col, "BBD" = bbd_col, "Bleaching" = blc_col, "Cyanobacterial" = cya_col, "GA" = ga_col, "General" = gen_col, "SEB" = seb_col, "Trematodiasis" = trem_col, "White" = whi_col, "BrB" = brb_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none")  +
+  ggtitle("(A) Positive correlations") +
+  xlab("") +
+  ylab("Number of studies") +
+  ylim(0, 8)
+```
+
+
+
+Then by negative:
+
+```{r}
+# negative
+corr_neg_plt <- corr_effect %>% 
+  filter(N_neg != 0) %>% 
+  ggplot(aes(x = fct_rev(Corallivore_family), 
+             y = N_neg, 
+             fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                        values = c("Aspergillosis" = asp_col, "BBD" = bbd_col, "Bleaching" = blc_col, "Cyanobacterial" = cya_col, "GA" = ga_col, "General" = gen_col, "SEB" = seb_col, "Trematodiasis" = trem_col, "White" = whi_col, "BrB" = brb_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none")  +
+  ggtitle("(B) Negative correlations") +
+  xlab("") +
+  ylab("") +
+  ylim(0, 8)
+```
+
+Then combine:
+
+```{r}
+corr_pos_plt / corr_neg_plt 
+```
+
+
+## Manipulations:
+
+```{r}
+manip_effect <- corallivores %>% 
+  filter(!is.na(Manipulative)) %>% 
+  filter(Disease_general != "Microbiome") %>% # don't want to use this because it's too general
+  group_by(Corallivore_family, Disease_general) %>% 
+  summarize(N_inc = sum(Manipulative == "Increased"),
+            N_dec = sum(Manipulative == "Decreased"),
+            N_noeff = sum(Manipulative == "No effect")) 
+```
+
+Plot by increased/decreased. First by increased:
+
+```{r}
+# increased
+manip_pos_plt <-manip_effect %>% 
+  filter(N_inc != 0) %>% 
+  ggplot(aes(x = ordered(Corallivore_family, 
+                         levels = c("Muricidae", "Amphinomidae", "Acanthasteridae", "Cryptochiridae", "Trinchesiidae", "Chaetodontidae")), 
+             y = N_inc, 
+             fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                        values = c("Aspergillosis" = asp_col, "BBD" = bbd_col, "Bleaching" = blc_col, "Cyanobacterial" = cya_col, "GA" = ga_col, "General" = gen_col, "SEB" = seb_col, "Trematodiasis" = trem_col, "White" = whi_col, "BrB" = brb_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none")  +
+  ggtitle("(C) Increased disease") +
+  xlab("") +
+  ylab("Number of studies") +
+  ylim(0, 8)
+```
+
+Then for decreased:
+
+```{r}
+# decreased
+manip_neg_plt <- manip_effect %>% 
+  filter(N_dec != 0) %>% 
+  ggplot(aes(x = Corallivore_family, 
+             y = N_dec, 
+             fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                        values = c("Aspergillosis" = asp_col, "BBD" = bbd_col, "Bleaching" = blc_col, "Cyanobacterial" = cya_col, "GA" = ga_col, "General" = gen_col, "SEB" = seb_col, "Trematodiasis" = trem_col, "White" = whi_col, "BrB" = brb_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none")  +
+  ggtitle("(D) Decreased disease") +
+  xlab("") +
+  ylab("") +
+  ylim(0, 8)
+```
+
+Then for no effect:
+
+```{r}
+# no effect
+manip_noEff_plt <- manip_effect %>% 
+  filter(N_noeff != 0) %>% 
+  ggplot(aes(x = ordered(Corallivore_family,
+                         levels = c("Chaetodontidae", "Muricidae", "Amphinomidae", "Pomacentridae")), 
+             y = N_noeff, 
+             fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                        values = c("Aspergillosis" = asp_col, "BBD" = bbd_col, "Bleaching" = blc_col, "Cyanobacterial" = cya_col, "GA" = ga_col, "General" = gen_col, "SEB" = seb_col, "Trematodiasis" = trem_col, "White" = whi_col, "BrB" = brb_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1), legend.position = "none")  +
+  ggtitle("(E) No effect") +
+  xlab("") +
+  ylab("") +
+  ylim(0, 8)
+```
+
+# get one legend for them all
+
+```{r}
+# plot something with all of the colors (this is very sloppily done)
+legend_plt <- corr_effect %>% 
+  as.data.frame() %>% 
+  add_row("Corallivore_family" = "Test", "Disease_general" = "BrB", "N_pos" = 8, "N_neg" = 8) %>% 
+  ggplot(aes(x = Corallivore_family, 
+             y = N_pos, 
+             fill = Disease_general)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Disease",
+                        values = c("Aspergillosis" = asp_col, "BBD" = bbd_col, "Bleaching" = blc_col, "Cyanobacterial" = cya_col, "GA" = ga_col, "General" = gen_col, "SEB" = seb_col, "Trematodiasis" = trem_col, "White" = whi_col, "BrB" = brb_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))  +
+  xlab("") +
+  ylab("Number of studies") +
+  ylim(0, 8)
+
+#extract legend
+#https://github.com/hadley/ggplot2/wiki/Share-a-legend-between-two-ggplot2-graphs
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  legend <- tmp$grobs[[leg]]
+  return(legend)}
+
+mylegend <- g_legend(legend_plt)
+```
+
+
+
+
+Then plot together:
+
+```{r}
+manip_pos_plt /
+manip_neg_plt
+```
+
+
+
+Or try all four together:
+
+```{r}
+# pdf("disease_cor_manip.pdf", height = 7.5, width = 11)
+
+(corr_pos_plt + corr_neg_plt + mylegend) /
+(manip_pos_plt + manip_neg_plt + manip_noEff_plt) & theme(text = element_text(size = 18), plot.title = element_text(size = 18))        
+
+
+# dev.off()
+```
+
+But maybe we actually want it flipped!! With corallivores on the colors... Try that:
+
+### Flip the color scheme:
+
+```{r}
+corr_pos_plt2 <- corr_effect %>% 
+  filter(N_pos != 0) %>% 
+  ggplot(aes(x = fct_rev(Disease_general), 
+             y = N_pos, 
+             fill = Corallivore_family)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Family",
+                         values = brewer.pal(n = 8, name = "Spectral")) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))  +
+  ggtitle("(A) Positive correlations") +
+  xlab("") +
+  ylab("Number of studies") +
+  ylim(0, 11)
+```
+
+Make a matching color palette to be used in the future:
+
+```{r}
+amph_col <- brewer.pal(n = 8, name = "Spectral")[1]
+chae_col <- brewer.pal(n = 8, name = "Spectral")[2]
+cryp_col <- brewer.pal(n = 8, name = "Spectral")[3]
+muri_col <- brewer.pal(n = 8, name = "Spectral")[4]
+ovul_col <- brewer.pal(n = 8, name = "Spectral")[5]
+poma_col <- brewer.pal(n = 8, name = "Spectral")[6]
+scar_col <- brewer.pal(n = 8, name = "Spectral")[7]
+xant_col <- brewer.pal(n = 8, name = "Spectral")[8]
+
+acan_col <- brewer.pal(n = 11, name = "Spectral")[11]
+trin_col <- brewer.pal(n = 11, name = "Spectral")[6]
+
+
+```
+
+Then by negative:
+
+```{r}
+# negative
+corr_neg_plt2 <- corr_effect %>% 
+  filter(N_neg != 0) %>% 
+  ggplot(aes(x = fct_rev(Disease_general), 
+             y = N_neg, 
+             fill = Corallivore_family)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Family",
+                         values = c(chae_col, scar_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))  +
+  ggtitle("(B) Negative correlations") +
+  xlab("Disease") +
+  ylab("Number of studies") +
+  ylim(0, 11)
+```
+
+Plot by increased/decreased. First by increased:
+
+```{r}
+# increased
+manip_inc_plt2 <- manip_effect %>% 
+  filter(N_inc != 0) %>% 
+  ggplot(aes(x = fct_rev(Disease_general), 
+             y = N_inc, 
+             fill = Corallivore_family)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Family",
+                         values = c(acan_col, amph_col, chae_col, cryp_col, muri_col, trin_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))  +
+  ggtitle("(C) Increased disease") +
+  xlab("") +
+  ylab("Number of studies") +
+  ylim(0, 11)
+```
+
+Then for decreased:
+
+```{r}
+# decreased
+manip_dec_plt2 <- manip_effect %>% 
+  filter(N_dec != 0) %>% 
+  ggplot(aes(x = fct_rev(Disease_general), 
+             y = N_dec, 
+             fill = Corallivore_family)) +
+    geom_bar(stat = "identity") +
+    theme_classic() +
+    scale_fill_manual(name = "Family",
+                          values = c(chae_col, xant_col)) +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1))  +
+  ggtitle("(D) Decreased disease") +
+  xlab("") +
+  ylab("Number of studies") +
+  ylim(0, 11)
+```
+
+Then plot together:
+
+```{r}
+# pdf("disease_cor_manip2.pdf", height = 6.5, width = 9)
+
+(corr_pos_plt2 + corr_neg_plt2) /
+(manip_inc_plt2 + manip_dec_plt2)
+
+# dev.off()
+```
+
+Save the direct feeding plot with these colors:
+
+```{r}
+# pdf("direct_feeding.pdf", height = 4.5, width = 7)
+
+# make this for just fishes
+corallivores %>% 
+  filter(Direct_lesion_feeding == "Y") %>% 
+  filter(Corallivore_family != "Amphinomidae") %>% 
+  group_by(Corallivore_family, Disease_general) %>% 
+  summarise(Observations = n()) %>% 
+  ggplot(aes(x = ordered(Corallivore_family, levels = c("Chaetodontidae", "Pomacentridae", "Labridae", "Scaridae", "Gobiidae", "Blenniidae", "Monacanthidae", "Acanthuridae")), y = Observations, fill = Disease_general)) +
+  geom_bar(stat = "identity") +
+    theme_classic() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1), text = element_text(size = 18))  +
+  scale_fill_manual(name = "Disease",
+                         values = c(asp_col, bbd_col, brb_col, gen_col, trem_col)) + # these values are from brewer.pal("Spectral") 
+  xlab("") +
+  ylab("Number of observations") 
+  
+# dev.off()
+```
+
+
+## Heat map
+
+This is just a rough idea--start by getting the "net" effect
+
+```{r}
+manip_net <- manip_effect %>% 
+  mutate(Net_eff = N_inc - N_dec + (0*N_noeff)) %>% 
+  select(Corallivore_family, Disease_general, Net_eff) %>%
+  spread(Disease_general, Net_eff) %>% 
+  filter(Corallivore_family != "Pomacentridae") %>% # just because can't distinguish between NA and 0 now
+  select(-BBD) %>% # same reason as above
+  column_to_rownames(var = "Corallivore_family") %>% 
+  replace(., is.na(.), 0) %>% # only doing this so it'll work with heatmap()
+  as.matrix
+
+# save to share:
+# pdf("manip_heatmap.pdf", height = 4, width = 5)
+
+
+heatmap(manip_net, cexCol = 0.8, cexRow = 0.8, scale = "none")
+
+# dev.off()
+```
+
+Also try for correlations:
+
+
+```{r}
+corr_net <- corr_effect %>% 
+  mutate(Net_corr = N_pos - N_neg) %>% 
+  select(Corallivore_family, Disease_general, Net_corr) %>%
+  spread(Disease_general, Net_corr) %>% 
+  column_to_rownames(var = "Corallivore_family") %>% 
+  replace(., is.na(.), 0) %>% # only doing this so it'll work with heatmap()
+  as.matrix
+
+# save to share:
+# pdf("corr_heatmap.pdf", height = 4, width = 5)
+
+
+heatmap(corr_net, cexCol = 0.8, cexRow = 0.8, scale = "none")
+
+# dev.off()
 ```
 

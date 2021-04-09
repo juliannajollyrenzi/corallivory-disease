@@ -169,6 +169,49 @@ time_plt + ecoreg_plt +
 # dev.off()
 ```
 
+# Get stats for ms
+
+For ecoregions:
+
+```{r}
+# get the total number of studies
+val <- ecoreg_sum %>% 
+  summarize(Total_studies = sum(Num_studies)) %>% 
+  as.numeric()
+
+# get the number of ecoregions
+ecoreg_num <- ecoreg_sum %>% 
+  summarize(Total_regions = n()) %>% 
+  as.numeric()
+
+# get the percentage of studies per region
+perc_df <- ecoreg_sum %>% 
+  group_by(ECOREGION) %>% 
+  summarize(Percent = Num_studies/val*100,
+            Num_std = Num_studies) %>% 
+  arrange(-Percent)
+```
+
+Also look by realm:
+
+```{r}
+realm_nums <- realm_pub %>% 
+  filter(Num_studies != 0) %>% 
+  select(REALM, Num_studies) 
+
+# get total number of regions
+val_r <- realm_nums %>% 
+  summarize(Total_studies = sum(Num_studies)) %>% 
+  as.numeric()
+
+realm_perc <- realm_nums %>% 
+  group_by(REALM) %>% 
+  summarize(Percent = Num_studies/val_r[1]*100,
+            Num_std = Num_studies)
+
+```
+
+
 
 
 
