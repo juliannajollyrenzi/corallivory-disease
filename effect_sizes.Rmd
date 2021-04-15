@@ -1,0 +1,367 @@
+---
+title: "Effect size plots"
+author: "Julianna Renzi"
+date: "4/9/2021"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+require(here)
+require(tidyverse)
+require(PropCIs) # for odds ratio confidence intervals
+require(meta)
+require(ggforestplot) # to install: devtools::install_github("NightingaleHealth/ggforestplot")
+```
+
+Read in the data and clean it a little
+
+```{r}
+coreffects <- read_csv(here("data", "Taxa_effectsize.csv")) %>% 
+  select(-X18, -X19, -X20)
+
+
+# get effect sizes
+rateratios <- coreffects %>% 
+  filter(!is.na(Control_n)) %>% # only want studies with suffient controls, data types, etc.
+  # apply the Haldane‐Anscombe correction for zeros
+  mutate(Ptreat = (Treat_response + 0.5)/(Treat_n + 0.5)) %>% 
+  mutate(Pcont = (Control_response + 0.5)/(Control_n + 0.5)) %>% 
+  mutate(Rate_ratio = Ptreat/Pcont) %>% 
+  mutate(ln_Rate_ratio = log(Rate_ratio))
+  
+```
+
+Plot results: broken out by category
+
+```{r}
+rateratios %>% 
+  # take out weird ones and wounding for now
+  filter(Treatment_simple != "Isolate_from_corallivore",
+         Treatment_simple != 	
+"V.mediterranei_infected",
+  Treatment_simple != "Wounding",
+  Treatment_simple != "Wounding_inoculation") %>% 
+  group_by(Treatment_simple, Corallivore_family) %>% 
+  summarize(Mean_RR = mean(Rate_ratio),
+            N = n(),
+            ln_mn_RR = log(Mean_RR)) %>% 
+  arrange(Mean_RR) %>% 
+  ggplot(aes(x = Corallivore_family, y = Mean_RR)) +
+  geom_bar(stat = "identity") +
+  facet_wrap(~Treatment_simple) +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text.x = element_text(angle = 90, hjust = 1), # rotate axis labels
+        axis.title.x = element_text(vjust = -1)) 
+  
+```
+
+Or all grouped together:
+
+```{r}
+rateratios %>% 
+  # take out weird ones and wounding for now
+  filter(Treatment_simple != "Isolate_from_corallivore",
+         Treatment_simple != 	
+"V.mediterranei_infected",
+  Treatment_simple != "Wounding",
+  Treatment_simple != "Wounding_inoculation") %>% 
+  group_by(Corallivore_family) %>% 
+  summarize(Mean_RR = mean(Rate_ratio),
+            N = n(),
+            ln_mn_RR = log(Mean_RR)) %>% 
+  arrange(Mean_RR) %>% 
+  ggplot(aes(x = Corallivore_family, y = Mean_RR)) +
+  geom_bar(stat = "identity") +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text.x = element_text(angle = 90, hjust = 1), # rotate axis labels
+        axis.title.x = element_text(vjust = -1))
+```
+
+Or as a boxplot
+
+```{r}
+rateratios %>% 
+  # take out weird ones and wounding for now
+  filter(Treatment_simple != "Isolate_from_corallivore",
+         Treatment_simple != 	
+"V.mediterranei_infected",
+  Treatment_simple != "Wounding",
+  Treatment_simple != "Wounding_inoculation") %>% 
+  ggplot(aes(x = fct_reorder(Corallivore_family, -Rate_ratio), y = Rate_ratio, color = Treatment_simple)) +
+  geom_boxplot() +
+  geom_point(position = position_dodge(width=0.75), aes(group = Treatment_simple), color = "darkgray") +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text.x = element_text(angle = 45, hjust = 1), # rotate axis labels
+        axis.title.x = element_text(vjust = -1),
+        legend.position = "top") 
+```
+
+Or as a group boxplot
+
+```{r}
+rateratios %>% 
+  # take out weird ones and wounding for now
+  filter(Treatment_simple != "Isolate_from_corallivore",
+         Treatment_simple != 	
+"V.mediterranei_infected",
+  Treatment_simple != "Wounding",
+  Treatment_simple != "Wounding_inoculation") %>% 
+  ggplot(aes(x = fct_reorder(Corallivore_family, -Rate_ratio), y = Rate_ratio)) +
+  geom_violin(aes(fill = Corallivore_family)) +
+  geom_point(position=position_dodge(width=0.75)) +
+  theme_classic() +
+  theme(text = element_text(size = 15),
+        axis.text.x = element_text(angle = 45, hjust = 1), # rotate axis labels
+        axis.title.x = element_text(vjust = -1),
+        legend.position = "top")
+```
+
+## Try odds ratio with orscoreci----
+
+```{r}
+tst <- orscoreci(x1 = coreffects$Treat_response, 
+          n1 = coreffects$Treat_n, 
+          x2 = coreffects$Control_response,
+          n2 = coreffects$Control_n,
+          conf.level = 0.95)
+
+
+oddsratios <- coreffects %>% 
+  filter(!is.na(Control_n)) %>% # only want studies with suffient controls, data types, etc.
+  mutate(Ptreat = (Treat_response + 0.5)/(Treat_n + 0.5)) %>% 
+  mutate(Pcont = (Control_response + 0.5)/(Control_n + 0.5)) %>%
+  mutate(Odds_ratio = (Ptreat/(1-Ptreat)) / (Pcont/(1-Pcont))) %>% 
+  mutate(OR_2 = (Ptreat*(1-Pcont))/(Pcont*(1-Ptreat))) 
+``` 
+
+This is hard. Try grouping?
+
+```{r}
+orgroup <- coreffects %>% 
+  filter(!is.na(Control_n)) %>% # only want studies with suffient controls, data types, etc.
+  group_by(Treatment_simple, Corallivore_family) %>% 
+  summarize(Treat_resp_sum = sum(Treat_response),
+            Treat_n_sum = sum(Treat_n),
+            Cont_resp_sum = sum(Control_response),
+            Cont_n_sum = sum(Control_n),
+            Ptreat = (Treat_resp_sum + 0.5)/(Treat_n_sum + 0.5),
+            Pcont = (Cont_resp_sum + 0.5)/(Cont_n_sum + 0.5),
+            Odds_ratio = (Ptreat/(1-Ptreat)) / (Pcont/(1-Pcont))) %>% 
+  rowwise() %>% 
+  mutate(Confint = as.character(orscoreci(x1 = Treat_resp_sum, 
+                             n1 = Treat_n_sum, 
+                             x2 = Cont_resp_sum,
+                             n2 = Cont_n_sum,
+                             conf.level = 0.95)))
+```
+
+Okay try rate ratio?
+
+```{r}
+rrgroup <- coreffects %>% 
+  filter(!is.na(Control_n)) %>% # only want studies with suffient controls, data types, etc.
+  group_by(Treatment_simple, Corallivore_family) %>% 
+  summarize(Treat_resp_sum = sum(Treat_response),
+            Treat_n_sum = sum(Treat_n),
+            Cont_resp_sum = sum(Control_response),
+            Cont_n_sum = sum(Control_n),
+            Ptreat = (Treat_resp_sum + 0.5)/(Treat_n_sum + 0.5),
+            Pcont = (Cont_resp_sum + 0.5)/(Cont_n_sum + 0.5),
+            Rate_ratio = Ptreat/Pcont,
+            ln_RR = log(Rate_ratio),
+            var_ln = ((1-Ptreat)/(Treat_n_sum*Ptreat)) + 
+              ((1-Pcont)/(Cont_n_sum*Pcont)),
+            stdev_ln = sqrt(var_ln)) 
+```
+
+
+## Gahhh try RR again----
+
+```{r}
+rr_Means <- rateratios %>% 
+  # take out weird ones and wounding for now
+  filter(Treatment_simple != "Isolate_from_corallivore",
+         Treatment_simple != 	
+"V.mediterranei_infected") %>% 
+  group_by(Corallivore_family, Treatment_simple) %>% 
+  summarize(Mean_RR = mean(Rate_ratio),
+            N = n(),
+            ln_mn_RR = log(mean(Rate_ratio)),
+            CI_upper = ln_mn_RR + 1.96*(sd(log(mean(Rate_ratio)/sqrt(N)))))
+```
+
+Okay new idea: plot each study individually
+
+## Using YouTube tutorial
+
+Make a cleaner dataset
+
+```{r}
+or_data <- coreffects %>% 
+  filter(!is.na(Control_n)) %>% 
+  filter(Treatment_simple != "Isolate_from_corallivore",
+         Treatment_simple != 	
+"V.mediterranei_infected")
+```
+
+
+```{r}
+# summarize using odds ratio
+ORmeta <- metabin(event.e = Treat_response, 
+                  n.e = Treat_n, 
+                  event.c = Control_response, 
+                  n.c = Control_n,
+                  sm = "OR", # summary measure
+                  studlab = Corallivore_family,
+                  incr = 0.5,
+                  addincr = TRUE,
+                  data = or_data)
+```
+
+Note: "Studies with no events in both the groups will have no (i.e. zero) weight in the pooled analysis. You can exclude them from the forest plot. But it is better to mention the number of such studies that are otherwise eligible for inclusion in the analysis but are omitted because of no events in the two groups in the text as well as in the footnotes of the figure." (https://www.researchgate.net/post/What_should_to_do_when_one_study_have_no_weight_in_meta-analysis)
+
+```{r}
+summary(ORmeta)
+
+# pdf("forest_test.pdf", height = 10, width = 10)
+forest(ORmeta, comb.r = T, # random effects
+       comb.f = TRUE, # fixed effects
+       layout = "JAMA",
+       sortvar = or_data$Corallivore_family) 
+# diamond is the overall effect with its confidence interval
+
+# dev.off()
+
+# just run a funnel plot since that's what the tutorial did:
+funnel(ORmeta, yaxis = "invvar") # there's that one study with "high n" we'd probably need to remove..
+
+# influence analysis
+metainf(ORmeta)
+```
+
+Maybe divide it up by sections? Or corallivores?
+
+```{r}
+# see the number of studies for corallivore families
+or_data %>% group_by(Corallivore_family) %>% summarize(N = n()) %>% arrange(-N)
+
+# versus for species
+or_data %>% group_by(Corallivore_Weffect) %>% summarize(N = n()) %>% arrange(-N)
+
+
+# versus for sections
+or_data %>% select(Treatment_simple) %>% unique()
+
+
+```
+
+```{r}
+muricid_data <- or_data %>% 
+  filter(Corallivore_family == "Muricidae")
+
+# get the ORs
+ORmuricid <- metabin(event.e = Treat_response, 
+                  n.e = Treat_n, 
+                  event.c = Control_response, 
+                  n.c = Control_n,
+                  sm = "OR", # summary measure
+                  incr = 0.5,
+                  studlab = Publication,
+                  addincr = TRUE,
+                  data = muricid_data)
+
+# plot
+forest(ORmuricid)
+
+```
+
+Do it just for the Big Bad (BB) muricids
+
+```{r}
+BBmuricid_data <- or_data %>% 
+  filter(Corallivore_Weffect == "Coralliophila abbreviata" |
+         Corallivore_Weffect == "Drupella spp.")
+
+# get the ORs
+ORmuricidBB <- metabin(event.e = Treat_response, 
+                  n.e = Treat_n, 
+                  event.c = Control_response, 
+                  n.c = Control_n,
+                  sm = "OR", # summary measure
+                  incr = 0.5,
+                  studlab = Publication,
+                  addincr = TRUE,
+                  data = BBmuricid_data)
+
+# plot
+forest(ORmuricidBB)
+
+```
+
+## ggplot version?----
+
+See: https://nightingalehealth.github.io/ggforestplot/articles/ggforestplot.html
+
+1. Add 0.5 to all cells, calculate the log OR
+
+2. Calculate the SE for each study
+
+```{r}
+HAcorrection <- 0.5 # Haldane‐Anscombe correction
+
+ORgg <- or_data %>% 
+  # apply correction for zero data
+  mutate(Treat_response = Treat_response + HAcorrection) %>% 
+  mutate(Treat_n = Treat_n + HAcorrection) %>% 
+  mutate(Control_response = Control_response + HAcorrection) %>% 
+  mutate(Control_n = Control_n + HAcorrection) %>% 
+  mutate(Ptreat = Treat_response / Treat_n) %>% 
+  mutate(Pcont = Control_response  / Control_n) %>%
+  mutate(OR = (Treat_response*Control_n)/(Treat_n*Control_response)) %>% 
+  mutate(lnOR = log(OR)) %>% 
+  mutate(SE = ((1/Treat_response) + (1/Treat_n)
+         + (1/Control_response) + (1/Control_n))^0.5) %>%  # this SE is that defined in Ruxton and Neuhauser 2013, pg. 13
+  mutate(CI_low = exp(lnOR - (1.96*SE))) %>%  # to find the ones that cross the 1 line with their 95% CIs
+  mutate(Cross1 = ifelse(CI_low > 1, 0, 1))
+  
+```
+
+3. Plot using vignette code
+
+```{r}
+# re-arrange so that the names are in a reasonable order
+ORgg <- ORgg %>% 
+  arrange(factor(Corallivore_family, levels = c("Acanthasteridae", "Amphinomidae", "Cryptochiridae", "Muricidae", "Chaetodontidae", "Pomacentridae", "Wounding")))
+
+# pdf("ggforestplot.pdf", width = 8, height = 5)
+
+ggforestplot::forestplot(
+  df = ORgg,
+  name = Corallivore_family,
+  estimate = lnOR,
+  logodds = TRUE,
+  se = SE,
+  pvalue = Cross1, # this is just zeros and 1s for visualization
+  psignif = 0.05,
+  colour = Publication,
+  xlab = "Odds ratio",
+  # title = "Corallivore families"
+) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), # rotate axis labels
+        axis.title.x = element_text(vjust = -1)) +
+  # then need to replace color scale to rename legend
+  scale_colour_manual(name = "Publication", values = ng_palette_d("all")(15))
+
+# dev.off()
+```
+
+What are odds ratios? The OR represents the odds that an outcome will occur given a particular exposure, compared to the odds of the outcome occurring in the absence of that exposure.; i.e. an odds ratio of 1.5 means that the odds of a case having had exposure #1 are 1.5 times the odds of its having hte baseline exposure. OR >1 indicates increased occurrence of an event
+
+
+
